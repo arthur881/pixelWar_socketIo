@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <style>
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            grid-template-rows: repeat(16, 1fr);
+            gap: 1px;
+            width: 100%;
+        }
+        .grid-item {
+            aspect-ratio: 1/1;
+            background-color: white;
+            cursor: pointer;
+            border: 1px solid rgba(0, 0, 0, 0.137);
+
+        }
+        .grid-item:hover {
+            border: 1px solid black;
+        }
+        input[type="color"] {
+            appearance: none;
+            -moz-appearance: none;
+            -webkit-appearance: none;
+            background: none;
+            border: 0;
+            cursor: pointer;
+            height: 5em;
+            padding: 0;
+            width: 10em;
+        }
+    </style>
+</head>
+<body>
+    <h3>You are in <span id="titleRoom">no room yet, join a room to play</span></h3>
+    <button class="joinRoomBtn" onclick="joinRoom('room1')">join room 1</button>
+    <button class="joinRoomBtn" onclick="joinRoom('room2')">join room 2</button>
+    <button id="leaveRoomBtn" onclick="leaveRoom()" disabled>Leave current room</button>
+    
+    <div class="grid-container">
+        <!-- Les cellules de la grille seront générées ici -->
+    </div>
+    <p>Choose your color :</p>
+    <input id="colorPickerInput" type="color">
+
+    <!-- <p>last message</p>
+    <p class="data"></p>
+    <textarea name="" id="" cols="30" rows="10"></textarea>
+    <button onclick="send()">Refresh</button> -->
+
+</body>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js" integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO" crossorigin="anonymous"></script>
+<script>
+
+    const gridCells = initializeGrid();
+
+    let currentRoom = '';
+    const allJoinRoomBtn = document.querySelectorAll('.joinRoomBtn');
+    const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+    const colorPickerInput = document.getElementById('colorPickerInput');
+
+    const socket = io('http://localhost:3000');
+    socket.on('connect', () => {
+        console.log('Connected');
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Disconnected');
+    });
+
+    socket.on('join', (room, roomData) => {
+
+        if (roomData) {
+            roomData.forEach(cell => {
+                changeCellColor(cell.cellId, cell.color);
+            });
+        }
+    });
+
+    socket.on('changeColor', (data) => {
+        const cell = document.getElementById(data.cellId);
+        if (cell) {
+            cell.style.backgroundColor = data.newColor;
+        }
+    });
+
+    gridCells.forEach(cell => {
+        const gridItem = document.getElementById(cell.id);
+        gridItem.addEventListener('click', () => {
+            changeCellColor(cell.id, colorPickerInput.value);
+            const cellIndex = gridCells.findIndex(c => c.id === cell.id);
+            gridCells[cellIndex].backgroundColor = colorPickerInput.value;
+        });
+    });
+
+
+    joinRoom = (room) => {
+        socket.emit('join', room);
+        currentRoom = room;
+        disableBtn()
+        document.getElementById('titleRoom').innerText = room;
+        console.log('joined ',room);
+    }
+
+    leaveRoom = () => {
+        socket.emit('leave', currentRoom);
+        currentRoom = '';
+        gridCells.forEach(cell => {
+            changeCellColor(cell.id, 'white');
+        });
+        disableBtn();
+        document.getElementById('titleRoom').innerText = 'no room yet, join a room to play';
+        console.log('leaved ', currentRoom);
+    }
+
+    function changeCellColor(cellId, newColor) {
+        const cell = document.getElementById(cellId);
+        cell.style.backgroundColor = newColor;
+        if (currentRoom !== '') {
+            socket.emit('updateColor', { currentRoom, cellId, newColor });
+        }
+    }
+
+    function disableBtn() {
+        if(currentRoom === '') {
+            allJoinRoomBtn.forEach(btn => {
+                btn.disabled = false;
+            });
+            leaveRoomBtn.disabled = true;
+        } else {
+            allJoinRoomBtn.forEach(btn => {
+                btn.disabled = true;
+            });
+            leaveRoomBtn.disabled = false;
+        }
+    }
+
+    function initializeGrid() {
+        const gridContainer = document.querySelector('.grid-container');
+        const gridCells = []; // Tableau pour stocker les informations des cellules
+
+        // Fonction pour générer un identifiant unique pour une cellule
+        function generateCellId(x, y) {
+            return `cell-${x}-${y}`;
+        }
+
+        for (let x = 0; x < 16; x++) {
+            for (let y = 0; y < 16; y++) {
+                const gridItem = document.createElement('div');
+                gridItem.classList.add('grid-item');
+                gridItem.id = generateCellId(x, y); // Attribuer un identifiant unique à la cellule
+                gridContainer.appendChild(gridItem);
+
+                // Créer un objet pour la cellule et l'ajouter au tableau gridCells
+                const cellInfo = {
+                    id: gridItem.id,
+                    x: x,
+                    y: y,
+                    backgroundColor: window.getComputedStyle(gridItem).backgroundColor,
+                };
+                gridCells.push(cellInfo);
+            }
+        }
+
+        // Retourner le tableau gridCells pour une utilisation ultérieure
+        return gridCells;
+    }
+
+
+
+
+
+
+
+
+
+
+
+    // let i = 0;
+    // let socketid = '';
+    // const text = document.querySelector('textarea');
+
+        // socket.on('message', (data) => {
+    //     console.log(data);
+    //     document.querySelector('.data').innerText = data;
+    // });
+
+    // let send = () => {
+    //     i++;
+    //     console.log(text.value);
+    //     //socket.emit('message', `Message ${i}`);
+    //     socket.emit('room', text.value, `Message room ${i}`);
+    // }
+    // text.addEventListener('change', (e) => {
+    //     socket.emit('leave', room);
+    //     socket.emit('join', e.target.value);
+    //     room = e.target.value;
+    // });
+
+</script>
+</html>

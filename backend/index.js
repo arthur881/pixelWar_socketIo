@@ -29,23 +29,13 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('user disconnected');
     });
 
-    // socket.on('message', (msg) => {
-    //     console.log('message: ' + msg);
-    //     io.emit('message', msg);
-    // });
-    
-    // socket.on('room', (room, msg) => {
-    //     console.log('room: ' + room + ' message: ' + msg);
-    //     io.to(room).emit('message', msg);
-    // });
-
     socket.on('join', (room) => {
         console.log('join room: ' + room);
         socket.join(room);
         let roomData = rooms[room];
         io.to(room).emit('join', room, roomData);
-        // io.to(room).emit('updateColor', rooms[room]);
     });
+
     socket.on('leave', (room) => {
         console.log('leave room: ' + room);
         socket.leave(room);
@@ -71,6 +61,11 @@ io.on('connection', (socket) => {
             // La cellule n'existe pas, ajoutons-la
             room.push({ cellId: data.cellId, color: data.newColor });
         }
+    });
+
+    socket.on('message', (room, message) => {
+        log('message: ' + message + ' in room: ' + room);
+        io.to(room).emit('message', message);
     });
 
 })

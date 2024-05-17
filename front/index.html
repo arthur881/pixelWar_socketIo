@@ -48,10 +48,9 @@
     <p>Choose your color :</p>
     <input id="colorPickerInput" type="color">
 
-    <!-- <p>last message</p>
-    <p class="data"></p>
-    <textarea name="" id="" cols="30" rows="10"></textarea>
-    <button onclick="send()">Refresh</button> -->
+    <input id="message" type="text" placeholder="Type your message">
+    <button onclick="sendMessage()">Send</button>
+    <div id="chat"></div>
 
 </body>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO" crossorigin="anonymous"></script>
@@ -63,6 +62,8 @@
     const allJoinRoomBtn = document.querySelectorAll('.joinRoomBtn');
     const leaveRoomBtn = document.getElementById('leaveRoomBtn');
     const colorPickerInput = document.getElementById('colorPickerInput');
+    const messageInput = document.getElementById('message');
+    const chat = document.getElementById('chat');
 
     const socket = io('http://localhost:3000');
     socket.on('connect', () => {
@@ -87,6 +88,14 @@
         if (cell) {
             cell.style.backgroundColor = data.newColor;
         }
+    });
+
+    socket.on('message', (message) => {
+        console.log(message);
+        const messageElement = document.createElement('p');
+        messageElement.classList.add('textMessage');
+        messageElement.innerText = message;
+        chat.appendChild(messageElement);
     });
 
     gridCells.forEach(cell => {
@@ -114,8 +123,14 @@
             changeCellColor(cell.id, 'white');
         });
         disableBtn();
+        document.querySelectorAll('.textMessage').forEach(e => e.remove());
         document.getElementById('titleRoom').innerText = 'no room yet, join a room to play';
         console.log('leaved ', currentRoom);
+    }
+
+    function sendMessage() {
+        socket.emit('message', currentRoom, messageInput.value);
+        messageInput.value = '';
     }
 
     function changeCellColor(cellId, newColor) {
